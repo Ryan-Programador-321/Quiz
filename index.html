@@ -1,0 +1,595 @@
+<!-- 
+PROJETO: Quiz interativo com cronômetro
+
+FUNCIONAMENTO:
+- Mostra perguntas e múltiplas opções de resposta
+- Embaralha a ordem das perguntas
+- Dá um tempo limite para cada pergunta
+- Soma pontos ao acertar
+- Avança automaticamente para a próxima pergunta
+- Finaliza ao terminar todas as perguntas
+
+ESTADO:
+- perguntaAtual (number)
+  → índice da pergunta atual no array
+
+- pontos (number)
+  → quantidade de respostas corretas
+
+- tempo (number)
+  → tempo restante da pergunta atual
+
+- intervalo
+  → controla o setInterval do cronômetro
+
+FONTE DE DADOS:
+- arrayPerguntas (array de objetos)
+  → cada pergunta possui:
+     {
+       pergunta: string,
+       opcoes: string[],
+       respostaCorreta: number
+     }
+
+FLUXO:
+
+1. Ao clicar em "Iniciar quiz":
+   - esconde botão inicial
+   - mostra pergunta, respostas, pontos e cronômetro
+   - renderiza a primeira pergunta
+   - inicia o cronômetro
+
+2. A cada pergunta:
+   - pega objeto atual pelo índice perguntaAtual
+   - mostra o texto da pergunta
+   - cria botões dinamicamente para cada opção
+
+3. Ao responder:
+   - bloqueia todos os botões
+   - verifica se a resposta está correta
+   - se acertar:
+       → soma pontos
+       → destaca botão verde
+   - se errar:
+       → destaca botão vermelho
+       → mostra resposta correta em verde
+   - para o cronômetro
+   - após 2 segundos → vai para próxima pergunta
+
+4. Se o tempo acabar:
+   - cronômetro chega em 0
+   - avança automaticamente
+
+5. Ao ir para próxima pergunta:
+   - incrementa perguntaAtual
+   - se ainda houver perguntas:
+       → renderiza próxima
+       → reinicia cronômetro
+   - se acabar:
+       → finaliza quiz
+
+6. Ao finalizar:
+   - esconde área de perguntas
+   - esconde respostas e cronômetro
+   - mostra mensagem final
+
+FUNÇÕES PRINCIPAIS:
+
+- atualizarcronometro()
+  → controla tempo por pergunta
+
+- mostrarPerguntasEOpcoes()
+  → renderiza pergunta atual + botões
+
+- responder(indice, btn)
+  → valida resposta e atualiza pontos
+
+- proximaPergunta()
+  → avança fluxo do quiz
+
+- finalizarQuiz()
+  → encerra interface
+
+CONCEITOS IMPORTANTES:
+
+- setInterval / clearInterval
+  → cronômetro por pergunta
+
+- setTimeout
+  → espera 2s antes de trocar
+
+- sort(() => Math.random() - 0.5)
+  → embaralha perguntas
+
+- createElement()
+  → cria botões dinamicamente
+
+- classList
+  → feedback visual (certo, errado, bloqueado)
+
+INTERFACE:
+- botão iniciar
+- área de pergunta
+- botões de resposta
+- placar de pontos
+- cronômetro
+- tela final
+ -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body{
+
+            height: 100vh;
+        }
+
+        body{
+            background-color: rgba(165, 42, 153, 0.541);;
+            display: grid;
+            grid-template-columns: 1fr 4fr 1fr;
+            grid-template-rows: 1fr 4fr 1fr;
+        }
+
+        .conteinerPontos{
+            grid-column: 1/2;
+            grid-row: 1/2;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            display: none;
+        }
+
+        .conteinerPontos .pontos{
+            background-color: rgb(211, 211, 21);
+            padding: 20px 35px 20px 35px;
+            color: rgb(0, 0, 0);
+            border-radius: 20px;
+        }
+
+
+
+        .conteinerCronometro{
+            grid-column: 3/4;
+            grid-row: 1/2;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            display: none;
+        }
+
+        .conteinerCronometro .cronometro{
+            background-color: darkblue;
+            padding: 20px 45px 20px 45px;
+            color: aliceblue;
+            border-radius: 20px;
+        }
+
+        .conteiner{
+            grid-column: 2/3;
+            grid-row: 2/3;
+            background-color: rgb(78, 71, 77);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            border: 3px solid black;
+        }
+
+        .iniciar{
+            background-color: dodgerblue;
+            width: 25%;
+            height: 10%;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 30px;
+            color: aliceblue;
+            cursor: pointer;
+            border: 3px solid black;
+            border-radius: 15px;
+        }
+
+        .iniciar:hover{
+            background-color: rgb(25, 112, 200);
+            color: aliceblue;
+            transform: scale(0.9);
+        }
+
+
+
+        .perguntas{
+            background-color: rgb(38, 128, 128);
+            width: 100%;
+            height: 25%;
+            display: none;
+
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+
+            font-size: 25px;
+        }
+
+        .respostas{
+            background-color: rgb(47, 218, 215);
+            width: 100%;
+            height: 75%;
+            display: none;
+
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            flex-direction: column;
+            gap: 20px;
+
+        }
+
+        .respostas button{
+            width: 90%;
+            font-size: 25px;
+        }
+
+        .terminar{
+            background-color: red;
+            width: 25%;
+            height: 10%;
+
+            display: none;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 30px;
+            color: aliceblue;
+            border: 3px solid black;
+            border-radius: 15px;
+        }
+
+        .bloqueia{
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .certo{
+
+            background-color: greenyellow;
+        }
+
+        .errado{
+            background-color: red;
+        }
+
+        @media (min-width: 320px) and (max-width: 600px){
+
+            .conteiner{
+            grid-column: 1/4;
+        }
+
+
+            .iniciar{
+          
+            width: 55%;
+            height: 20%;
+        }
+
+
+        .terminar{
+            
+            width: 55%;
+            height: 20%;
+        }
+
+        }
+    </style>
+</head>
+<body>
+
+    <div class="conteinerPontos">
+        <div class="pontos">0</div>
+    </div>
+
+    <div class="conteinerCronometro">
+        <div class="cronometro">10</div>
+    </div>
+
+    <div class="conteiner">
+        <div class="iniciar">Iniciar quiz</div>
+        <div class="perguntas"></div>
+        <div class="respostas"></div>
+        <div class="terminar">O quiz acabou!</div>
+    </div>
+
+    <script>
+        const $btnIniciar = document.querySelector('.iniciar');
+        const $conteinerPerguntas = document.querySelector('.perguntas');
+        const $conteinerRespostas = document.querySelector('.respostas');
+        const $conteinerCronometro = document.querySelector('.conteinerCronometro');
+        const $cronometro = document.querySelector('.cronometro');
+        const $conteinerPontos = document.querySelector('.conteinerPontos');
+        const $pontos = document.querySelector('.pontos');
+        const $terminar = document.querySelector('.terminar');
+
+        let perguntaAtual = 0;
+        let pontos = 0;
+        let tempo = 20;
+        
+
+        //inicio
+        $btnIniciar.addEventListener('click', () => {
+
+            $btnIniciar.style.display = 'none';
+            $conteinerPerguntas.style.display = 'flex';
+            $conteinerRespostas.style.display = 'flex';
+            $conteinerCronometro.style.display = 'flex';
+            $conteinerPontos.style.display = 'flex'
+            
+
+            mostrarPerguntasEOpcoes();
+            atualizarcronometro();
+
+        })
+
+        
+        //iniciar cronômetro
+
+        function atualizarcronometro(){
+
+        tempo = 20;
+
+        $cronometro.innerHTML = tempo;
+
+        intervalo = setInterval( () => {
+
+        tempo--;
+
+        $cronometro.innerHTML = tempo;
+        
+        if(tempo <= 0) {
+
+            clearInterval(intervalo);
+            proximaPergunta();
+
+        }
+
+
+        }, 1000)
+                    
+           /*  tempo = 10;
+
+            let intervalo = setInterval( 
+            
+            tempo--;
+            
+            atualizarTempo();
+
+            if(tempo <=0){
+
+                clearInterval(intervalo);
+                proximaPergunta();
+            }
+
+            ,1000); */
+
+        }
+
+        
+        function mostrarPerguntasEOpcoes(){
+
+            $conteinerRespostas.innerHTML = '';
+
+            //PERGUNTAS
+
+            //primeiro pegar um indice específico do array que contem um objeto
+            let objeto = arrayPerguntas[perguntaAtual];
+
+            //e depois pegar a pergunta do objeto
+            $conteinerPerguntas.innerText = objeto.pergunta;
+
+
+
+            //RESPOSTAS
+
+            //primeiro pegar um indice específico do array que contem um objeto
+
+
+            objeto.opcoes.forEach( (res, indice) => {
+            
+            
+            const btn = document.createElement('button');
+
+            btn.innerText = res;
+
+            btn.style.cursor = 'pointer';
+
+            btn.onclick = () => responder(indice, btn);
+            
+            //e depois pegar a pergunta do objeto
+            $conteinerRespostas.appendChild(btn);
+            
+            } );
+
+        
+
+            
+
+        
+        }
+
+        let arrayPerguntas = [
+
+            {
+                pergunta: "Quem descobriu o Brasil?",
+                opcoes: ["Pedro Alvares Cabral", "Os indígenas", "Os espanhois", "O brasil não foi descoberto, foi invadido e roubaram nosso ouro!" ],
+                respostaCorreta: 3
+            }
+            
+            ,
+
+            {
+                pergunta: "Qual a fala típica de um português (de portugal)?",
+                opcoes: ["Com todo respeito... (mas sem respeito nenhum)", "Ora pois", "Oxi mainha", "Uai sor? (why sir)" ],
+                respostaCorreta: 1
+            }
+
+            ,
+
+            {
+                pergunta: "Como se diz PEIXE, BOLA e GATO em inglês?",
+                opcoes: ["Sorry I don't spicar inglês", "The book is on table", "Fish, ball, cat", "tanto faz" ],
+                respostaCorreta: 2
+            }
+        ]
+
+        /* O .sort() funciona assim:
+
+
+
+        let numeros = [5, 2, 9];
+
+        numeros.sort((a, b) => {
+            console.log("Comparando:", a, "e", b);
+            return a - b;
+        });
+
+
+
+        Saída no console (pode variar um pouco):
+
+        Comparando: 2 e 5
+        Comparando: 9 e 2
+        Comparando: 9 e 5
+
+
+
+        Isso deixa cristalino:
+
+
+        O retorno define a ordem:
+
+        retorno < 0 → a vem antes de b
+
+        retorno > 0 → a vem depois de b
+
+        retorno = 0 → mantém como está
+
+        
+        O sort pega pares de elementos do array:
+
+        compara
+
+        troca posição ou não
+
+        pega outro par
+
+        compara
+
+        troca de novo
+
+        e assim vai…
+
+
+        
+        🎯 Resumo simples:
+
+        sort() pega dois valores do array
+
+        compara esses dois valores
+
+        usa o retorno para decidir a posição de cada um
+
+        repite tudo até ordenar */
+        arrayPerguntas.sort(() => Math.random() - 0.5);
+
+        /* O que está acima é a mesma coisa que:
+        
+        ArrayPerguntas.sort((a, b) => {
+            return Math.random() - 0.5;
+        });
+
+        O que acontece é que mesmo que você não escreva a e b, eles existem. */
+
+        //Math.random() - 0.5 = valor aleatório entre 0 e 1 - 0.5
+
+        function responder(indice, btn){
+
+            const desat = document.querySelectorAll('.respostas button');
+
+            desat.forEach(d => 
+            {d.classList.add('bloqueia');}
+        
+            );
+
+
+            let objeto = arrayPerguntas[perguntaAtual];
+
+
+            if(indice === objeto.respostaCorreta){
+
+                pontos++
+                $pontos.innerText = pontos;
+                btn.classList.add('certo');
+                btn.classList.remove('bloqueia');
+            }
+
+            else{
+
+                btn.classList.add('errado');
+                btn.classList.remove('bloqueia');
+                desat[objeto.respostaCorreta].classList.add('certo');
+                desat[objeto.respostaCorreta].classList.remove('bloqueia');
+            }
+
+            clearInterval(intervalo);
+            
+            setTimeout(() => {
+
+            proximaPergunta();
+            }, 2000);
+            
+            
+        }
+
+        function proximaPergunta(){
+
+            perguntaAtual++
+
+            if (perguntaAtual >= arrayPerguntas.length){
+
+                finalizarQuiz();
+            }
+
+            else{
+
+                mostrarPerguntasEOpcoes();
+                atualizarcronometro();
+            }
+        }
+
+        function finalizarQuiz(){
+
+            $conteinerPerguntas.style.display = 'none';
+            $conteinerRespostas.style.display = 'none';
+            $conteinerCronometro.style.display = 'none';
+            /* $pontos.style.display = 'none'; */
+            $terminar.style.display = 'flex';
+
+        }
+        
+
+    </script>
+</body>
+</html>
